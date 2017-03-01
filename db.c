@@ -16,6 +16,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <limits.h>
 #include <cutils/log.h>
 
@@ -28,21 +29,21 @@ int database_check(const struct su_context *ctx)
     char *filename = malloc(snprintf(NULL, 0, "%s/%u-%u", REQUESTOR_STORED_PATH, ctx->from.uid, ctx->to.uid) + 1);
     sprintf(filename, "%s/%u-%u", REQUESTOR_STORED_PATH, ctx->from.uid, ctx->to.uid);
     if ((fp = fopen(filename, "r"))) {
-    LOGD("Found file");
+    SLOGD("Found file");
         char cmd[PATH_MAX];
         fgets(cmd, sizeof(cmd), fp);
         int last = strlen(cmd) - 1;
-        LOGD("this is the last character %u of the string", cmd[5]);
+        SLOGD("this is the last character %u of the string", cmd[5]);
         if (cmd[last] == '\n') {
             cmd[last] = '\0';
         }
-        LOGD("Comparing %c %s, %u to %s", cmd[last - 2], cmd, last, get_command(&ctx->to));
+        SLOGD("Comparing %c %s, %u to %s", cmd[last - 2], cmd, last, get_command(&ctx->to));
         if (strcmp(cmd, get_command(&ctx->to)) == 0) {
             allow = fgetc(fp);
         }
         fclose(fp);
     } else if ((fp = fopen(REQUESTOR_STORED_DEFAULT, "r"))) {
-    LOGD("Using default");
+    SLOGD("Using default");
         allow = fgetc(fp);
         fclose(fp);
     }

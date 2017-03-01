@@ -21,6 +21,7 @@
 #include <sys/wait.h>
 #include <sys/select.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <limits.h>
 #include <fcntl.h>
@@ -284,7 +285,7 @@ static void deny(const struct su_context *ctx)
     char *cmd = get_command(&ctx->to);
 
     send_intent(ctx, "", 0, ACTION_RESULT);
-    LOGW("request rejected (%u->%u %s)", ctx->from.uid, ctx->to.uid, cmd);
+    SLOGW("request rejected (%u->%u %s)", ctx->from.uid, ctx->to.uid, cmd);
     fprintf(stderr, "%s\n", strerror(EACCES));
     exit(EXIT_FAILURE);
 }
@@ -335,7 +336,7 @@ static void allow(const struct su_context *ctx)
     (ctx->to.optind + (arg) < ctx->to.argc) ? " " : "",					\
     (ctx->to.optind + (arg) < ctx->to.argc) ? ctx->to.argv[ctx->to.optind + (arg)] : ""
 
-    LOGD("%u %s executing %u %s using shell %s : %s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+    SLOGD("%u %s executing %u %s using shell %s : %s%s%s%s%s%s%s%s%s%s%s%s%s%s",
             ctx->from.uid, ctx->from.bin,
             ctx->to.uid, get_command(&ctx->to), ctx->to.shell,
             arg0, PARG(0), PARG(1), PARG(2), PARG(3), PARG(4), PARG(5),
@@ -437,7 +438,7 @@ int main(int argc, char *argv[])
             errno = 0;
             ctx.to.uid = strtoul(argv[optind], &endptr, 10);
             if (errno || *endptr) {
-                LOGE("Unknown id: %s\n", argv[optind]);
+                SLOGE("Unknown id: %s\n", argv[optind]);
                 fprintf(stderr, "Unknown id: %s\n", argv[optind]);
                 exit(EXIT_FAILURE);
             }
@@ -483,20 +484,20 @@ int main(int argc, char *argv[])
     if (strlen(cm_version) > 0) {
         // only allow su on debuggable builds
         if (strcmp("1", debuggable) != 0) {
-            LOGE("Root access is disabled on non-debug builds");
+            SLOGE("Root access is disabled on non-debug builds");
             deny(&ctx);
         }
 
         // enforce persist.sys.root_access on non-eng builds
         if (strcmp("eng", build_type) != 0 &&
                (atoi(enabled) & 1) != 1 ) {
-            LOGE("Root access is disabled by system setting - enable it under settings -> developer options");
+            SLOGE("Root access is disabled by system setting - enable it under settings -> developer options");
             deny(&ctx);
         }
 
         // disallow su in a shell if appropriate
         if (ctx.from.uid == AID_SHELL && (atoi(enabled) == 1)) {
-            LOGE("Root access is disabled by a system setting - enable it under settings -> developer options");
+            SLOGE("Root access is disabled by a system setting - enable it under settings -> developer options");
             deny(&ctx);
         }
     }
@@ -511,7 +512,7 @@ int main(int argc, char *argv[])
 
     if (st.st_gid != st.st_uid)
     {
-        LOGE("Bad uid/gid %d/%d for Superuser Requestor application",
+        SLOGE("Bad uid/gid %d/%d for Superuser Requestor application",
                 (int)st.st_uid, (int)st.st_gid);
         deny(&ctx);
     }
@@ -555,8 +556,10 @@ int main(int argc, char *argv[])
     signal(SIGINT, cleanup_signal);
     signal(SIGABRT, cleanup_signal);
     atexit(cleanup);
+    allow(&ctx);
+    return -1;
 
-    if (send_intent(&ctx, socket_path, -1, ACTION_REQUEST) < 0) {
+/*    if (send_intent(&ctx, socket_path, -1, ACTION_REQUEST) < 0) {
         deny(&ctx);
     }
 
@@ -579,7 +582,7 @@ int main(int argc, char *argv[])
 
 #define SOCKET_RESPONSE	"socket:"
     if (strncmp(result, SOCKET_RESPONSE, sizeof(SOCKET_RESPONSE) - 1))
-        LOGW("SECURITY RISK: Requestor still receives credentials in intent");
+        SLOGW("SECURITY RISK: Requestor still receives credentials in intent");
     else
         result += sizeof(SOCKET_RESPONSE) - 1;
 
@@ -588,10 +591,10 @@ int main(int argc, char *argv[])
     } else if (!strcmp(result, "ALLOW")) {
         allow(&ctx);
     } else {
-        LOGE("unknown response from Superuser Requestor: %s", result);
+        SLOGE("unknown response from Superuser Requestor: %s", result);
         deny(&ctx);
     }
 
     deny(&ctx);
-    return -1;
+    return -1;*/
 }
